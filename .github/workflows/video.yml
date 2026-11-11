@@ -70,6 +70,7 @@ jobs:
             '运行详情：'+os.environ['RUN_URL'],
             '失败原因：'+(err or '未提供详细原因，请看运行日志'),
             '关键帧数量：'+str(len(data.get('frames',[]))),
+            '完整MP4：'+('已生成（'+str(data['playback'].get('bytes'))+' bytes）' if data.get('playback') else '未生成'),
             '语音文字长度：'+str(len(data.get('transcript',''))),
             '视觉模型状态：'+str(data.get('visual_understanding',{}).get('status','not_run')),
             '视觉模型错误：'+str(data.get('visual_understanding',{}).get('error',''))[:300],
@@ -96,7 +97,8 @@ jobs:
                '运行记录：'+os.environ['RUN_URL'],
                '失败原因：'+str(d.get('error','无'))[:500]]
           if success:
-              out+=['### 原视频信息','标题：'+str(d.get('title','未知'))[:200],
+              out+=['### 原视频信息','完整MP4：'+('已导出 '+str(d['playback'].get('file'))+' ('+str(d['playback'].get('bytes'))+' bytes)，请从本次运行Artifact下载' if d.get('playback') else '未导出'),
+                    '标题：'+str(d.get('title','未知'))[:200],
                     '时长（秒）：'+str(d.get('duration','未知')),
                     '关键帧数：'+str(len(d.get('frames',[]))),
                     '### 视频声音识别（仅语音）',
