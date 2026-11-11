@@ -117,7 +117,7 @@ jobs:
         if: always() && steps.target.outputs.issue != ''
         env:
           GH_TOKEN: ${{ github.token }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_NUMBER: ${{ steps.target.outputs.issue }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         shell: bash
         run: |
