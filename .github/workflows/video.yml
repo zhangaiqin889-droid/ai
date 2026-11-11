@@ -1,7 +1,7 @@
 name: 免费视频识别自动执行与诊断
 on:
   issues:
-    types: [opened]
+    types: [opened, edited]
   workflow_dispatch:
     inputs:
       url:
