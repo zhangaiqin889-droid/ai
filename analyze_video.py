@@ -35,6 +35,31 @@ try:
             result["transcript"]="\n".join(f"[{s.start:.1f}-{s.end:.1f}] {s.text}" for s in segments)
         except Exception as e: result["warnings"].append("transcription unavailable: "+str(e)[:140])
     else: result["warnings"].append("audio extraction failed")
+    # 使用免费的开源视觉语言模型进行实际画面理解（区别于OCR）
+    result["visual_understanding"]={"status":"not_verified","model":"HuggingFaceTB/SmolVLM2-256M-Video-Instruct","captions":[]}
+    frames=[OUT / f"frame_{i:02d}.jpg" for i in range(10)]
+    frames=[f for f in frames if f.is_file()][:3]
+    if frames:
+        try:
+            import torch
+            from transformers import AutoProcessor, AutoModelForImageTextToText
+            model_id="HuggingFaceTB/SmolVLM2-256M-Video-Instruct"
+            processor=AutoProcessor.from_pretrained(model_id)
+            model=AutoModelForImageTextToText.from_pretrained(model_id).to("cpu")
+            model.eval()
+            for frame in frames:
+                messages=[{"role":"user","content":[{"type":"image","path":str(frame)},{"type":"text","text":"Describe the visible people, animals, objects and actions in this image, using short factual English. Do not guess unseen events."}]}]
+                inputs=processor.apply_chat_template(messages,add_generation_prompt=True,tokenize=True,return_dict=True,return_tensors="pt")
+                with torch.inference_mode():
+                    generated=model.generate(**inputs,max_new_tokens=90,do_sample=False)
+                new_tokens=generated[:,inputs["input_ids"].shape[1]:]
+                caption=processor.batch_decode(new_tokens,skip_special_tokens=True)[0]
+                result["visual_understanding"]["captions"].append({"frame":frame.name,"description":caption})
+            result["visual_understanding"]["status"]="generated_unreviewed"
+        except Exception as err:
+            result["visual_understanding"]["status"]="failed"
+            result["visual_understanding"]["error"]=str(err)[:300]
+            result["warnings"].append("visual model error (not a successful visual analysis)")
     result["status"]="extracted"
 except Exception as e:
     result["status"]="failed"
