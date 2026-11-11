@@ -1,4 +1,4 @@
-name: 免费视频识别试运行
+name: 免费视频识别自动执行与诊断
 on:
   push:
     paths:
@@ -7,29 +7,65 @@ on:
   workflow_dispatch:
     inputs:
       url:
-        description: '视频 HTTPS 链接'
+        description: '公开视频 HTTPS 链接'
         required: true
         type: string
+permissions:
+  contents: read
+  issues: write
 jobs:
   analyze:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    permissions:
-      contents: read
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y ffmpeg tesseract-ocr tesseract-ocr-chi-sim
+      - name: 安装视频工具
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg tesseract-ocr tesseract-ocr-chi-sim
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install yt-dlp faster-whisper
-      - name: 分析视频
+      - name: 安装语音识别与解析组件
+        run: pip install yt-dlp faster-whisper
+      - name: 分析视频（失败保留诊断结果）
+        id: process
+        continue-on-error: true
         env:
           VIDEO_URL: ${{ github.event.inputs.url || 'https://v.douyin.com/gJGoreHkVuM/' }}
         run: python analyze_video.py
-      - uses: actions/upload-artifact@v4
+      - name: 上传结果
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: 视频识别结果
           path: output/
+          if-no-files-found: warn
           retention-days: 1
+      - name: 自动记录诊断供助手读取
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OUTCOME: ${{ steps.process.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os,json,pathlib
+          report=pathlib.Path('output/report.json')
+          data=json.loads(report.read_text(encoding='utf-8')) if report.exists() else {}
+          status=data.get('status','no_report')
+          err=str(data.get('error',''))[:450]
+          lines=[
+            '自动视频识别状态：'+status,
+            '工作流结果：'+os.environ['OUTCOME'],
+            '运行详情：'+os.environ['RUN_URL'],
+            '失败原因：'+(err or '未提供详细原因，请看运行日志'),
+            '关键帧数量：'+str(len(data.get('frames',[]))),
+            '语音文字长度：'+str(len(data.get('transcript',''))),
+            '注意：成功提取不代表已完成 AI 视觉理解。'
+          ]
+          pathlib.Path('diagnostic.md').write_text('\n\n'.join(lines),encoding='utf-8')
+          PY
+          gh issue create --title "视频识别自动诊断 #${{ github.run_number }}" --body-file diagnostic.md || true
+      - name: 标记真正的失败
+        if: steps.process.outcome != 'success'
+        run: exit 1
