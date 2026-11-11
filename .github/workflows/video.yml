@@ -25,7 +25,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: 安装语音识别与解析组件
-        run: pip install yt-dlp faster-whisper
+        run: pip install yt-dlp faster-whisper "transformers>=4.56,<5" "torch>=2.4,<3" Pillow accelerate
       - name: 分析视频（失败保留诊断结果）
         id: process
         continue-on-error: true
@@ -61,6 +61,8 @@ jobs:
             '失败原因：'+(err or '未提供详细原因，请看运行日志'),
             '关键帧数量：'+str(len(data.get('frames',[]))),
             '语音文字长度：'+str(len(data.get('transcript',''))),
+            '视觉模型状态：'+str(data.get('visual_understanding',{}).get('status','not_run')),
+            '视觉模型错误：'+str(data.get('visual_understanding',{}).get('error',''))[:300],
             '注意：成功提取不代表已完成 AI 视觉理解。'
           ]
           pathlib.Path('diagnostic.md').write_text('\n\n'.join(lines),encoding='utf-8')
