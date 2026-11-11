@@ -42,15 +42,15 @@ try:
     if p.returncode==0:
         try:
             from faster_whisper import WhisperModel
-            model=WhisperModel("tiny",device="cpu",compute_type="int8")
-            segments,_=model.transcribe(str(wav),beam_size=1)
+            model=WhisperModel("base",device="cpu",compute_type="int8")
+            segments,_=model.transcribe(str(wav),beam_size=3,language="zh",vad_filter=True)
             result["transcript"]="\n".join(f"[{s.start:.1f}-{s.end:.1f}] {s.text}" for s in segments)
         except Exception as e: result["warnings"].append("transcription unavailable: "+str(e)[:140])
     else: result["warnings"].append("audio extraction failed")
     # 使用免费的开源视觉语言模型进行实际画面理解（区别于OCR）
     result["visual_understanding"]={"status":"not_verified","model":"HuggingFaceTB/SmolVLM2-256M-Video-Instruct","captions":[]}
     frames=[OUT / f"frame_{i:02d}.jpg" for i in range(10)]
-    frames=[f for f in frames if f.is_file()][:3]
+    frames=[f for f in frames if f.is_file()][:5]
     if frames:
         try:
             import torch
@@ -72,7 +72,7 @@ try:
             result["visual_understanding"]["status"]="failed"
             result["visual_understanding"]["error"]=str(err)[:300]
             result["warnings"].append("visual model error (not a successful visual analysis)")
-    result["status"]="extracted"
+    result["status"]="extracted" if result.get("playback") and result.get("frames") else "partial"
 except Exception as e:
     result["status"]="failed"
     result["error"]=str(e)[:500]
