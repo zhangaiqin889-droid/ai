@@ -18,6 +18,18 @@ try:
     media=next((p for p in OUT.glob("source.*") if p.suffix.lower() in [".mp4",".webm",".mkv"]),None)
     if media is None: raise RuntimeError("未找到视频文件")
     if media.stat().st_size>40*1024*1024: raise RuntimeError("视频大小超限")
+    # 生成可播放 MP4 成品，并随关键帧上传为工作流 Artifact
+    playback=OUT/"video_playback.mp4"
+    encode=subprocess.run(["ffmpeg","-hide_banner","-loglevel","error","-i",str(media),
+        "-map","0:v:0","-map","0:a:0?","-vf","scale=trunc(min(480\\,iw)/2)*2:-2",
+        "-c:v","libx264","-preset","veryfast","-crf","28","-pix_fmt","yuv420p",
+        "-c:a","aac","-b:a","96k","-movflags","+faststart","-y",str(playback)],
+        capture_output=True,text=True,timeout=180)
+    if encode.returncode == 0 and playback.is_file() and playback.stat().st_size>0:
+        result["playback"]={"file":playback.name,"bytes":playback.stat().st_size,"format":"mp4"}
+    else:
+        playback.unlink(missing_ok=True)
+        result["warnings"].append("MP4 export failed: "+encode.stderr[-250:])
     for i,t in enumerate([1,3,6,10,20,40,60,90,120,150]):
         if result.get("duration") and t>result["duration"]: break
         f=OUT/f"frame_{i:02d}.jpg"
