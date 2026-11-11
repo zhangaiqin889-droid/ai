@@ -38,7 +38,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           EVENT_NAME: ${{ github.event_name }}
           ISSUE_BODY: ${{ github.event.issue.body }}
-          ISSUE_NUMBER: ${{ steps.target.outputs.issue }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
           INPUT_URL: ${{ github.event.inputs.url }}
         shell: bash
         run: |
