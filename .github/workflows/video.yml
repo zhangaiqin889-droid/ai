@@ -4,6 +4,7 @@ on:
     paths:
       - '.github/workflows/video.yml'
       - 'analyze_video.py'
+      - 'generate_prompt.py'
   workflow_dispatch:
     inputs:
       url:
@@ -32,6 +33,10 @@ jobs:
         env:
           VIDEO_URL: ${{ github.event.inputs.url || 'https://v.douyin.com/gJGoreHkVuM/' }}
         run: python analyze_video.py
+      - name: 根据真实画面与声音自动生成反推提示词
+        if: always()
+        continue-on-error: true
+        run: python generate_prompt.py
       - name: 上传结果
         if: always()
         uses: actions/upload-artifact@v4
