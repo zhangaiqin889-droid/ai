@@ -1,10 +1,5 @@
 name: 免费视频识别自动执行与诊断
 on:
-  push:
-    paths:
-      - '.github/workflows/video.yml'
-      - 'analyze_video.py'
-      - 'generate_prompt.py'
   issues:
     types: [opened]
   workflow_dispatch:
@@ -18,7 +13,7 @@ permissions:
   issues: write
 jobs:
   analyze:
-    if: github.event_name != 'issues' || startsWith(github.event.issue.title, '[视频反推]')
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.issue.title, '[视频反推]')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -83,7 +78,7 @@ jobs:
           name: 视频识别结果
           path: output/
           if-no-files-found: warn
-          retention-days: 1
+          retention-days: 7
       - name: 自动记录诊断供助手读取
         if: always()
         env:
