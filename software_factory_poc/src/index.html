@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>AI 软件工程任务看板｜真实功能演示</title>
+<style>
+:root{font-family:system-ui,"Microsoft Yahei",sans-serif;color:#e8edf8;background:#0d1422}
+*{box-sizing:border-box}body{margin:0}header{padding:26px max(24px,5vw);border-bottom:1px solid #2b3447;background:#111b2d}
+small{color:#a5b5d2}h1{font-size:clamp(24px,3vw,36px);margin:7px 0}p{color:#9bacc9}
+main{padding:28px max(24px,5vw)}.toolbar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:25px}
+input,select,button{font:inherit;border-radius:9px;padding:12px;border:1px solid #3b4b66;color:#f2f6ff;background:#19263b}
+#title{flex:1;min-width:180px}button{cursor:pointer;background:#315bdc;border:0;font-weight:650}
+button.secondary{background:#22314a}.board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.column{border:1px solid #293851;background:#141f33;border-radius:16px;min-height:320px;padding:18px}
+h2{margin:0 0 15px;font-size:17px}.count{float:right;color:#a4b7dc}
+.task{padding:15px;border:1px solid #35445e;background:#1c2b43;border-radius:12px;margin:0 0 12px}
+.task strong{display:block;line-height:1.5;overflow-wrap:anywhere}.task footer{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:12px}
+.task select{max-width:130px;padding:7px}.task button{padding:7px 10px;background:#553446}
+.tag{font-size:12px;padding:3px 7px;background:#354a70;border-radius:5px;color:#dbe6fc}
+#notice{min-height:1.5em;color:#b7d1ff}#import{display:none}
+@media(max-width:840px){.board{grid-template-columns:1fr}.column{min-height:140px}}
+</style></head><body>
+<header><small>SOFTWARE FACTORY · ZERO-PAID PROOF OF CONCEPT</small><h1>AI 软件工程任务看板</h1><p>可实际添加任务、切换状态、删除任务、导出和导入数据。数据仅保存在当前浏览器。</p></header>
+<main>
+<form class="toolbar" id="form"><input id="title" aria-label="任务名称" maxlength="120" placeholder="输入新任务，例如：实现用户登录" required/><select id="priority" aria-label="优先级"><option>P0</option><option selected>P1</option><option>P2</option></select><button type="submit">创建任务</button></form>
+<div class="toolbar"><button class="secondary" id="export" type="button">导出 JSON</button><button class="secondary" id="importButton" type="button">导入 JSON</button><input id="import" type="file" accept=".json,application/json"/><button class="secondary" id="clear" type="button">清空（需确认）</button></div>
+<div id="notice" role="status" aria-live="polite"></div>
+<section class="board" aria-label="工程任务看板">
+<div class="column"><h2>待开发 <span class="count" id="count-todo">0</span></h2><div id="todo"></div></div>
+<div class="column"><h2>开发中 <span class="count" id="count-doing">0</span></h2><div id="doing"></div></div>
+<div class="column"><h2>已完成 <span class="count" id="count-done">0</span></h2><div id="done"></div></div>
+</section>
+</main>
+<script type="module">
+import { addTask, moveTask, deleteTask, getStats, exportTasks, importTasks, STATUSES } from "./logic.mjs";
+const KEY="software-factory-poc-tasks-v1"; let tasks=[];
+const notice=(message)=>{document.querySelector("#notice").textContent=message};
+try{tasks=importTasks(localStorage.getItem(KEY)||'{"schema":1,"tasks":[]}')}catch(e){notice("本地数据未加载："+e.message)}
+const save=()=>localStorage.setItem(KEY,exportTasks(tasks));
+const render=()=>{
+  for(const status of STATUSES)document.getElementById(status).replaceChildren();
+  const stats=getStats(tasks);
+  for(const status of STATUSES)document.getElementById("count-"+status).textContent=stats[status];
+  for(const task of tasks){
+    const article=document.createElement("article");article.className="task";
+    const title=document.createElement("strong");title.textContent=task.title;article.append(title);
+    const footer=document.createElement("footer");
+    const tag=document.createElement("span");tag.className="tag";tag.textContent=task.priority;footer.append(tag);
+    const select=document.createElement("select");select.setAttribute("aria-label",task.title+" 状态");
+    for(const status of STATUSES){const option=document.createElement("option");option.value=status;option.textContent={todo:"待开发",doing:"开发中",done:"已完成"}[status];select.append(option)}
+    select.value=task.status;select.addEventListener("change",()=>{tasks=moveTask(tasks,task.id,select.value);save();render()});
+    footer.append(select);
+    const remove=document.createElement("button");remove.textContent="删除";remove.setAttribute("aria-label","删除 "+task.title);remove.addEventListener("click",()=>{if(confirm("确定删除该任务？")){tasks=deleteTask(tasks,task.id);save();render()}});footer.append(remove);
+    article.append(footer);document.getElementById(task.status).append(article);
+  }
+};
+document.getElementById("form").addEventListener("submit",event=>{
+ event.preventDefault();try{const title=document.getElementById("title");tasks=addTask(tasks,{id:"t_"+crypto.randomUUID(),title:title.value,priority:document.getElementById("priority").value,status:"todo",createdAt:Date.now()});save();render();title.value="";notice("已创建任务")}catch(e){notice(e.message)}
+});
+document.getElementById("export").addEventListener("click",()=>{
+ const blob=new Blob([exportTasks(tasks)],{type:"application/json"});const url=URL.createObjectURL(blob);
+ const a=document.createElement("a");a.href=url;a.download="工程任务备份.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),3000)
+});
+document.getElementById("importButton").addEventListener("click",()=>document.getElementById("import").click());
+document.getElementById("import").addEventListener("change",async event=>{
+ const file=event.target.files?.[0];if(!file)return;
+ try{if(file.size>1024*1024)throw new Error("文件超过1MB");const imported=importTasks(await file.text());if(confirm("用导入的任务替换当前任务？")){tasks=imported;save();render();notice("导入成功")}}catch(e){notice("导入失败："+e.message)}finally{event.target.value=""}
+});
+document.getElementById("clear").addEventListener("click",()=>{if(confirm("确定清空所有任务？")){tasks=[];save();render();notice("已清空")}});
+render();
+</script></body></html>
