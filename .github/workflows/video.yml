@@ -33,7 +33,7 @@ jobs:
         id: process
         continue-on-error: true
         env:
-          VIDEO_URL: ${{ github.event.inputs.url || 'https://v.douyin.com/jDco2sFb3Ms/' }}
+          VIDEO_URL: ${{ github.event.inputs.url || 'https://v.douyin.com/vx1vu_OQsms/' }}
         run: python analyze_video.py
       - name: 根据真实画面与声音自动生成反推提示词
         if: always()
