@@ -5,6 +5,8 @@ on:
       - '.github/workflows/video.yml'
       - 'analyze_video.py'
       - 'generate_prompt.py'
+  issues:
+    types: [opened]
   workflow_dispatch:
     inputs:
       url:
@@ -16,6 +18,7 @@ permissions:
   issues: write
 jobs:
   analyze:
+    if: github.event_name != 'issues' || startsWith(github.event.issue.title, '[视频反推]')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -33,7 +36,7 @@ jobs:
         id: process
         continue-on-error: true
         env:
-          VIDEO_URL: ${{ github.event.inputs.url || 'https://v.douyin.com/vx1vu_OQsms/' }}
+          VIDEO_URL: ${{ github.event_name == 'issues' && github.event.issue.body || github.event.inputs.url || 'https://v.douyin.com/vx1vu_OQsms/' }}
         run: python analyze_video.py
       - name: 根据真实画面与声音自动生成反推提示词
         if: always()
@@ -75,6 +78,42 @@ jobs:
           pathlib.Path('diagnostic.md').write_text('\n\n'.join(lines),encoding='utf-8')
           PY
           gh issue create --title "视频识别自动诊断 #${{ github.run_number }}" --body-file diagnostic.md || true
+      - name: 自动把识别与提示词回传到请求单（供ChatGPT读取）
+        if: always() && github.event_name == 'issues'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path('output/report.json')
+          d=json.loads(p.read_text(encoding='utf-8')) if p.exists() else {}
+          success=d.get('status')=='extracted' and bool(d.get('frames'))
+          out=['## '+('视频内容提取结果' if success else '视频提取失败，未生成真实反推'),
+               '处理状态：'+str(d.get('status','no_report')),
+               '运行记录：'+os.environ['RUN_URL'],
+               '失败原因：'+str(d.get('error','无'))[:500]]
+          if success:
+              out+=['### 原视频信息','标题：'+str(d.get('title','未知'))[:200],
+                    '时长（秒）：'+str(d.get('duration','未知')),
+                    '关键帧数：'+str(len(d.get('frames',[]))),
+                    '### 视频声音识别（仅语音）',
+                    str(d.get('transcript','未识别到人声'))[:6000],
+                    '### 画面逐帧']
+              captions={x.get('frame'):x.get('description','') for x in d.get('visual_understanding',{}).get('captions',[])}
+              for x in d.get('frames',[])[:10]:
+                  out+=['**'+str(x.get('second'))+'秒**：'+str(captions.get(x.get('image'),'视觉模型未得到结果'))[:1000],
+                        '字幕/OCR：'+str(x.get('screen_text',''))[:500]]
+              prompt=pathlib.Path('output/视频反推提示词.md')
+              if prompt.exists():
+                  out+=['### 制作提示词与反推指令',prompt.read_text(encoding='utf-8')[:10000]]
+              else:
+                  out+=['尚未生成反推文本，请查看运行记录']
+          pathlib.Path('issue-result.md').write_text('\n\n'.join(out),encoding='utf-8')
+          PY
+          gh issue comment "$ISSUE_NUMBER" --body-file issue-result.md
       - name: 标记真正的失败
         if: steps.process.outcome != 'success'
         run: exit 1
