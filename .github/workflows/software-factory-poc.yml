@@ -1,0 +1,28 @@
+name: Software Factory Chat Agent POC - real tests
+on:
+  pull_request:
+    paths:
+      - "software_factory_poc/**"
+      - ".github/workflows/software-factory-poc.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Real unit and data validation tests
+        run: node --test software_factory_poc/tests/*.test.mjs
+      - name: Check deliverable exists
+        run: test -s software_factory_poc/src/index.html && test -s software_factory_poc/src/logic.mjs
+      - name: Upload runnable web app
+        uses: actions/upload-artifact@v4
+        with:
+          name: software-factory-poc-app
+          path: software_factory_poc/src/
+          retention-days: 7
