@@ -32,11 +32,45 @@ jobs:
         run: pip install "git+https://github.com/viking1304/yt-dlp.git@728fe46fbaa97d6f03efcaf9e766d4db63338b8d" faster-whisper "transformers>=4.56,<5" "torch>=2.4,<3" Pillow accelerate num2words torchvision
       - name: 核验抖音修复版
         run: python -c "import yt_dlp; print('yt-dlp version:',yt_dlp.version.__version__)"
+      - name: 获取当前视频任务
+        id: target
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_NUMBER: ${{ steps.target.outputs.issue }}
+          INPUT_URL: ${{ github.event.inputs.url }}
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os,json,subprocess
+          url=os.getenv('INPUT_URL') or os.getenv('ISSUE_BODY') or ''
+          issue=os.getenv('ISSUE_NUMBER','')
+          if not url:
+              p=subprocess.run(['gh','issue','list','--state','open','--limit','40','--json','number,title,body,createdAt'],check=True,capture_output=True,text=True)
+              v=[x for x in json.loads(p.stdout) if x.get('title','').startswith('[视频反推]')]
+              v.sort(key=lambda x:x['createdAt'],reverse=True)
+              if not v: raise SystemExit('没有可处理的视频任务')
+              url=v[0]['body'].strip()
+              issue=str(v[0]['number'])
+          from urllib.parse import urlparse
+          import re
+          m=re.search(r'https://[^\s]+',url)
+          if not m: raise SystemExit('没有合法视频链接')
+          url=m.group(0).rstrip('.,;')
+          host=(urlparse(url).hostname or '').lower()
+          domains=('douyin.com','iesdouyin.com','tiktok.com','youtube.com','youtu.be','bilibili.com','b23.tv')
+          if not any(host==d or host.endswith('.'+d) for d in domains): raise SystemExit('平台不支持')
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:
+              f.write('url='+url+'\n')
+              f.write('issue='+issue+'\n')
+          print('本次视频',url,'回传issue',issue)
+          PY
       - name: 分析视频（失败保留诊断结果）
         id: process
         continue-on-error: true
         env:
-          VIDEO_URL: ${{ github.event_name == 'issues' && github.event.issue.body || github.event.inputs.url || 'https://v.douyin.com/vx1vu_OQsms/' }}
+          VIDEO_URL: ${{ steps.target.outputs.url }}
         run: python analyze_video.py
       - name: 根据真实画面与声音自动生成反推提示词
         if: always()
@@ -80,7 +114,7 @@ jobs:
           PY
           gh issue create --title "视频识别自动诊断 #${{ github.run_number }}" --body-file diagnostic.md || true
       - name: 自动把识别与提示词回传到请求单（供ChatGPT读取）
-        if: always() && github.event_name == 'issues'
+        if: always() && steps.target.outputs.issue != ''
         env:
           GH_TOKEN: ${{ github.token }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
