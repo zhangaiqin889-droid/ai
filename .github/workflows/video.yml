@@ -1,0 +1,35 @@
+name: 免费视频识别试运行
+on:
+  push:
+    paths:
+      - '.github/workflows/video.yml'
+      - 'analyze_video.py'
+  workflow_dispatch:
+    inputs:
+      url:
+        description: '视频 HTTPS 链接'
+        required: true
+        type: string
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg tesseract-ocr tesseract-ocr-chi-sim
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install yt-dlp faster-whisper
+      - name: 分析视频
+        env:
+          VIDEO_URL: ${{ github.event.inputs.url || 'https://v.douyin.com/gJGoreHkVuM/' }}
+        run: python analyze_video.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: 视频识别结果
+          path: output/
+          retention-days: 1
