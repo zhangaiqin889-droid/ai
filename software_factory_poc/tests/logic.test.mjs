@@ -1,0 +1,15 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {addTask,moveTask,deleteTask,getStats,exportTasks,importTasks,normalizeTask} from "../src/logic.mjs";
+const task={id:"task_001",title:"实现登录页面",priority:"P0",status:"todo",createdAt:123456789};
+test("创建合法任务且不修改原数组",()=>{const original=[];const tasks=addTask(original,task);assert.equal(tasks[0].title,task.title);assert.equal(original.length,0)});
+test("任务状态转移",()=>{const tasks=moveTask([task],task.id,"doing");assert.equal(tasks[0].status,"doing");assert.equal(task.status,"todo")});
+test("拒绝无效任务状态",()=>assert.throws(()=>moveTask([task],task.id,"unknown")));
+test("拒绝不存在的任务",()=>assert.throws(()=>moveTask([task],"missing","done")));
+test("拒绝重复任务ID",()=>assert.throws(()=>addTask([task],task)));
+test("禁止空标题与超长标题",()=>{assert.throws(()=>normalizeTask({...task,title:" "}));assert.throws(()=>normalizeTask({...task,title:"a".repeat(121)}))});
+test("删除任务",()=>assert.equal(deleteTask([task],task.id).length,0));
+test("统计三个状态",()=>assert.deepEqual(getStats([task,{...task,id:"task_002",status:"done"}]),{todo:1,doing:0,done:1}));
+test("导入导出数据可无损往返",()=>assert.deepEqual(importTasks(exportTasks([task])),[task]));
+test("导入拒绝无效结构",()=>{assert.throws(()=>importTasks('{"schema":9,"tasks":[]}'));assert.throws(()=>importTasks('{"schema":1,"tasks":{}}'))});
+test("导入拒绝重复任务标识",()=>assert.throws(()=>importTasks(JSON.stringify({schema:1,tasks:[task,task]}))));
