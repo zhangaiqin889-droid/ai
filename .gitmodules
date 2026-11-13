@@ -1,0 +1,6 @@
+[submodule "tools/复刻工具/replica-skill"]
+	path = tools/复刻工具/replica-skill
+	url = https://github.com/Jakeschincariol/replica-skill.git
+[submodule "tools/复刻工具/remaster"]
+	path = tools/复刻工具/remaster
+	url = https://github.com/thenavidm/remaster.git
