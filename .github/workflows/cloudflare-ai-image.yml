@@ -1,0 +1,81 @@
+name: Cloudflare Workers AI 生图验收
+on:
+  workflow_dispatch:
+    inputs:
+      free_plan_verified:
+        description: 已在 Cloudflare 确认 Workers Free 套餐及当天剩余额度
+        type: boolean
+        required: true
+        default: false
+permissions: {}
+concurrency:
+  group: cloudflare-workers-ai-image
+jobs:
+  generate:
+    if: ${{ inputs.free_plan_verified }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 调用 FLUX 并验证返回图片
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import base64
+          import binascii
+          import json
+          import os
+          import re
+          import urllib.error
+          import urllib.request
+          from pathlib import Path
+
+          account_id = os.environ["CLOUDFLARE_ACCOUNT_ID"]
+          token = os.environ["CLOUDFLARE_API_TOKEN"]
+          if not re.fullmatch(r"[0-9a-fA-F]{32}", account_id) or not token:
+              raise SystemExit("Cloudflare Account ID 或 API Token 缺失或格式错误")
+
+          model = "@cf/black-forest-labs/flux-1-schnell"
+          url = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/{model}"
+          request = urllib.request.Request(
+              url,
+              data=json.dumps({
+                  "prompt": "Photorealistic early morning in Rome, espresso cup on a cafe table, warm light",
+                  "steps": 4,
+              }).encode(),
+              headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+          )
+
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, newurl):
+                  return None
+
+          try:
+              with urllib.request.build_opener(NoRedirect).open(request, timeout=90) as response:
+                  payload = json.load(response)
+          except urllib.error.HTTPError as error:
+              raise SystemExit(f"Cloudflare 返回 HTTP {error.code}") from None
+          except (urllib.error.URLError, TimeoutError, ValueError):
+              raise SystemExit("Cloudflare 请求失败或未返回有效 JSON") from None
+
+          result = payload.get("result") if isinstance(payload, dict) else None
+          if not isinstance(payload, dict) or payload.get("success") is not True or not isinstance(result, dict) or not isinstance(result.get("image"), str):
+              raise SystemExit("Cloudflare 未返回图片")
+          try:
+              image = base64.b64decode(result["image"], validate=True)
+          except binascii.Error:
+              raise SystemExit("图片编码无效") from None
+          if not image.startswith(bytes.fromhex("ffd8ff")) or not image.endswith(bytes.fromhex("ffd9")):
+              raise SystemExit("返回内容不是完整 JPEG")
+          Path("cloudflare-image.jpg").write_bytes(image)
+          print(f"Cloudflare 返回 JPEG，共 {len(image)} 字节")
+          PY
+          identify cloudflare-image.jpg
+      - name: 保存测试图
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudflare-image
+          path: cloudflare-image.jpg
+          if-no-files-found: error
+          retention-days: 1
