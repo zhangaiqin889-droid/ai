@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>脑图工作台 · 意大利语创作</title>
+<style>
+:root{font:14px/1.5 "Microsoft YaHei",system-ui,sans-serif;color:#273341;background:#f3f5f8}
+*{box-sizing:border-box}body{margin:0}button,input,select,textarea{font:inherit}button{cursor:pointer;border:1px solid #d8dde7;border-radius:6px;padding:6px 10px;background:white;color:#344256}button:hover{background:#edf4ff;border-color:#9ab5ef}button:focus-visible,.node:focus-visible{outline:2px solid #497de8;outline-offset:2px}button[aria-pressed=true],.tabs .active{background:#eaf1ff;color:#245fca;border-color:#8eace8}
+header{background:#fff;border-bottom:1px solid #dfe4ed}header .top{display:flex;align-items:center;gap:12px;padding:7px 16px;border-bottom:1px solid #edf0f6}header .brand{font-weight:700;font-size:16px;color:#39745b}header .docname{max-width:330px;border:0;font-weight:600;padding:4px 10px;background:transparent}header .grow{flex:1}.tabs{display:flex;align-items:center;gap:3px;padding:4px 16px;border-bottom:1px solid #eef1f4}.tabs button{border:none;border-radius:0;padding:8px 15px;background:transparent}.tabs .active{border-bottom:2px solid #417bd3}
+.ribbon{display:flex;gap:16px;flex-wrap:wrap;padding:9px 16px 12px;min-height:71px}.group{display:flex;align-items:center;gap:5px;padding-right:16px;border-right:1px solid #e4e7ec}.group:last-child{border:0}.group-title{font-size:10px;color:#8592a3;align-self:flex-end;margin-left:3px}.ribbon button{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:53px;padding:5px;font-size:12px;border-color:transparent}.ribbon button .ico{font-size:19px}
+main{display:grid;grid-template-columns:224px minmax(0,1fr) 244px;height:calc(100vh - 177px);min-height:420px}
+aside{background:#fff;min-width:0;overflow:auto}aside.left{border-right:1px solid #e1e5ed}aside.right{border-left:1px solid #e1e5ed}.aside-title{font-weight:700;padding:14px 14px 9px;border-bottom:1px solid #eef1f4}aside .panel{padding:12px}aside label{display:block;font-size:12px;color:#687889;margin:12px 0 4px}aside select,aside input{width:100%;padding:7px;background:#fff;border:1px solid #ccd5e2;border-radius:6px}#outlineNav{padding:6px 5px}#outlineNav button{display:block;width:100%;text-align:left;border:0;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:transparent}#outlineNav button.chosen{color:#256bd1;background:#e9f2ff}
+.center{min-width:0;display:flex;flex-direction:column;background-color:#fafbfd;background-image:radial-gradient(#dce2e9 .8px,transparent .8px);background-size:20px 20px}
+.workarea{position:relative;flex:1;overflow:auto}#mindMapView{width:100%;height:100%;display:block;overflow:auto}#mindMapView svg{min-width:900px;min-height:560px}#otherView{padding:24px;display:none;min-height:100%}.card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin:0 0 12px;box-shadow:0 2px 5px #15284a08}.card h3{margin:0 0 8px}.card button{margin:4px}
+.node text{font:14px "Microsoft YaHei",sans-serif;dominant-baseline:middle}.node{cursor:pointer}.node rect{stroke:#b6c8e2;stroke-width:1.2}.node.selected rect{stroke:#367fe2;stroke-width:3;filter:drop-shadow(0 0 4px #b2d0fa)}.node.root rect{fill:#2e9b7d;stroke:#21856b}.node.root text{fill:#fff;font-weight:700}.line{stroke-width:2.5;fill:none}.rel{stroke:#9067bd;stroke-width:1.7;fill:none;stroke-dasharray:5 3}
+footer{height:36px;background:#fff;border-top:1px solid #dce3ed;display:flex;align-items:center;gap:16px;padding:0 15px;font-size:12px;color:#69798b}footer .grow{flex:1}
+#dialog{border:1px solid #d6deea;border-radius:12px;box-shadow:0 20px 60px #182d4544;min-width:min(450px,90vw);max-width:94vw}#dialog::backdrop{background:#15243b88}#dialog h3{margin-top:0}#dialog textarea{width:100%;min-height:130px;margin:7px 0 12px}.dialog-actions{display:flex;justify-content:flex-end;gap:8px}
+.guide{font-size:12px;color:#7a899a;padding:9px 14px}
+.columns{display:flex;gap:12px;align-items:flex-start;overflow:auto}.kanban-column{width:245px;min-width:245px;background:#e9edf3;border-radius:9px;padding:10px}.kanban-column h3{margin:0 0 10px}.slide-card{background:linear-gradient(135deg,#fcfefc,#e4f1ee);min-height:290px;padding:36px;max-width:640px}.slide-card h2{font-size:30px}.task-done{text-decoration:line-through;color:#82909b}
+@media(max-width:950px){main{grid-template-columns:0 minmax(0,1fr) 205px}.left{display:none}.ribbon{max-height:92px;overflow:auto}main{height:calc(100vh - 195px)}}@media(max-width:650px){main{grid-template-columns:1fr}.right{display:none}.top .docname{max-width:160px}.tabs{overflow-x:auto}.ribbon .group{border-right:0}.ribbon button{min-width:42px}header .top{gap:6px}}
+</style>
+</head>
+<body>
+<header>
+<div class="top"><span class="brand">◇ 脑图工作台</span><input id="docName" class="docname" aria-label="文档标题"><span class="grow"></span><button id="newDoc">新建</button><button id="openDoc">打开</button><button id="saveDoc">保存</button><button id="exportDoc">导出</button></div>
+<div class="tabs" id="tabs"><button class="active" data-view="mindmap">思维导图</button><button data-view="outline">大纲</button><button data-view="kanban">看板</button><button data-view="slides">幻灯片</button><button data-view="gantt">甘特图</button></div>
+<div class="ribbon">
+<div class="group"><button id="undo"><span class="ico">↶</span>撤销</button><button id="redo"><span class="ico">↷</span>重做</button><span class="group-title">编辑</span></div>
+<div class="group"><button id="child"><span class="ico">⊕</span>子主题</button><button id="sibling"><span class="ico">⊞</span>同级主题</button><button id="edit"><span class="ico">✎</span>编辑</button><button id="remove"><span class="ico">⌫</span>删除</button><span class="group-title">主题</span></div>
+<div class="group"><button id="note"><span class="ico">▤</span>备注</button><button id="relation"><span class="ico">⤳</span>关系线</button><button id="task"><span class="ico">☑</span>任务</button><span class="group-title">插入</span></div>
+<div class="group"><button id="templates"><span class="ico">▦</span>模板</button><button id="importDoc"><span class="ico">⇩</span>导入</button><button id="png"><span class="ico">▧</span>PNG</button><button id="svg"><span class="ico">◇</span>SVG</button><span class="group-title">文件</span></div>
+</div>
+</header>
+<main>
+<aside class="left"><div class="aside-title">大纲导航</div><div id="outlineNav"></div><p class="guide">快捷键：Tab 子主题；Enter 同级主题；F2 编辑；Delete 删除；Ctrl+Z/Y 撤销/重做</p></aside>
+<section class="center"><div class="workarea"><div id="mindMapView"></div><div id="otherView"></div></div><footer><span id="status">就绪</span><span class="grow"></span><span id="count">0 主题</span><button id="fit">适配画布</button></footer></section>
+<aside class="right"><div class="aside-title">格式与属性</div><div class="panel">
+<label for="layout">布局</label><select id="layout"><option value="mindmap">双向思维导图</option><option value="tree">向右结构</option><option value="org">组织结构</option><option value="fishbone">鱼骨图（数据树）</option><option value="timeline">时间线</option><option value="outline">大纲</option></select>
+<label for="theme">主题配色</label><select id="theme"><option value="cream">自然绿</option><option value="blue">海洋蓝</option><option value="purple">清雅紫</option><option value="gold">暖金</option></select>
+<label for="nodeText">所选主题文字</label><input id="nodeText" aria-label="所选主题文字">
+<label for="tags">标签（逗号分隔）</label><input id="tags" aria-label="标签">
+<label for="nodeNote">备注</label><textarea id="nodeNote" rows="5" style="width:100%;border:1px solid #ccd5e2;border-radius:6px" aria-label="备注"></textarea>
+<button id="applyDetails" style="margin-top:9px;width:100%">应用更改</button>
+</div></aside>
+</main>
+<dialog id="dialog"><h3 id="dialogTitle">编辑</h3><p id="dialogInfo"></p><textarea id="dialogText"></textarea><div class="dialog-actions"><button id="cancelDialog">取消</button><button id="confirmDialog">确定</button></div></dialog>
+<input type="file" id="fileInput" accept=".json,.md,.txt" hidden>
+<script type="module" src="./app.mjs"></script>
+</body></html>
