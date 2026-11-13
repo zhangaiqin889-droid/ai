@@ -7,10 +7,6 @@ on:
         type: boolean
         required: true
         default: false
-      single_image_test:
-        description: 授权单次生图测试
-        type: boolean
-        default: false
 permissions: {}
 concurrency:
   group: cloudflare-workers-ai-image
@@ -55,7 +51,7 @@ jobs:
           print("Workers AI model catalog access verified")
           PY
       - name: 调用 FLUX 并验证返回图片
-        if: ${{ inputs.free_plan_verified || inputs.single_image_test }}
+        if: ${{ inputs.free_plan_verified }}
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -111,7 +107,7 @@ jobs:
           print(f"Cloudflare 返回 JPEG，共 {len(image)} 字节")
           PY
       - name: 保存测试图
-        if: ${{ inputs.free_plan_verified || inputs.single_image_test }}
+        if: ${{ inputs.free_plan_verified }}
         uses: actions/upload-artifact@v4
         with:
           name: cloudflare-image
