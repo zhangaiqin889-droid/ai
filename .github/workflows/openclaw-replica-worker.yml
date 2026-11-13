@@ -31,6 +31,14 @@ jobs:
           set -euo pipefail
           npm install -g openclaw@2026.11.1 --allow-scripts=openclaw
           openclaw --version
+      - name: 将已审阅的复刻 Skill 装入 OpenClaw 工作区
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.openclaw/workspace/skills/software-replica"
+          cp cloud-agent/skills/software-replica/SKILL.md "$HOME/.openclaw/workspace/skills/software-replica/SKILL.md"
+          test -s "$HOME/.openclaw/workspace/skills/software-replica/SKILL.md"
+          openclaw skills check
       - name: 安装与功能入口校验
         shell: bash
         run: |
@@ -41,6 +49,7 @@ jobs:
           openclaw agent --help > cloud-agent/evidence/agent-help.txt
           openclaw skills --help > cloud-agent/evidence/skills-help.txt
           grep -q -E -- '--(local|message)' cloud-agent/evidence/agent-help.txt
+          test -f "$HOME/.openclaw/workspace/skills/software-replica/SKILL.md"
           test -f tools/复刻工具/replica-skill/replica-recon/SKILL.md
           test -f tools/复刻工具/replica-skill/replica-test/SKILL.md
           test -f tools/复刻工具/remaster/skills/clone/scripts/remaster.mjs
