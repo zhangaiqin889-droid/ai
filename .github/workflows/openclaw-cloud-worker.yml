@@ -51,9 +51,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          openclaw models set openrouter/openrouter/free
+          openclaw models set openrouter/free
           openclaw models status --json > /tmp/openclaw-model-status.json
-          node -e "const x=require('/tmp/openclaw-model-status.json');const t=JSON.stringify(x); if(!t.includes('openrouter/openrouter/free'))process.exit(1);console.log('FREE_ONLY_MODEL_CONFIGURED')"
+          node -e "const x=require('/tmp/openclaw-model-status.json');const t=JSON.stringify(x); if(!t.includes('openrouter/free'))process.exit(1);console.log('FREE_ONLY_MODEL_CONFIGURED')"
       - name: 真正运行复刻项目核心行为测试
         shell: bash
         run: |
@@ -68,7 +68,7 @@ jobs:
             printf 'MODEL_INFERENCE=BLOCKED_MISSING_GITHUB_SECRET\n' | tee cloud-agent/evidence/inference.txt
             exit 0
           fi
-          openclaw agent exec "Reply with the word OK only." --model openrouter/openrouter/free --json > cloud-agent/evidence/agent-test.json
+          openclaw agent exec "Reply with the word OK only." --model openrouter/free --json > cloud-agent/evidence/agent-test.json
           node -e "const x=require('./cloud-agent/evidence/agent-test.json');const s=JSON.stringify(x);if(!s.includes('OK'))process.exit(1); console.log('OPENCLAW_FREE_AGENT_INFERENCE_VERIFIED')"
           printf 'MODEL_INFERENCE=VERIFIED_OPENROUTER_FREE\n' | tee cloud-agent/evidence/inference.txt
       - name: 上传真实证据（不上传凭据）
