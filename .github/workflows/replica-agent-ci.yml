@@ -1,0 +1,46 @@
+name: 软件复刻执行 Agent · 核心验证（免费标准 Runner）
+on:
+  push:
+    branches:
+      - feature/edrawmind-replica-core
+    paths:
+      - 'edrawmind-replica/**'
+      - '.github/workflows/replica-agent-ci.yml'
+      - '.gitmodules'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: replica-agent-core-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify-replica:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: 获取既有工程及锁定版本复刻 Skills
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: 核验复刻工具实际安装
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f tools/复刻工具/replica-skill/replica-recon/SKILL.md
+          test -f tools/复刻工具/remaster/skills/clone/scripts/remaster.mjs
+          node tools/复刻工具/remaster/skills/clone/scripts/remaster.mjs --help > /tmp/remaster-help.txt
+          grep -q 'parity' /tmp/remaster-help.txt
+          echo "Replica Skill and Remaster: CHECKED"
+      - name: 执行脑图数据引擎真实行为测试
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test edrawmind-replica/tests/mindmap.test.mjs
+      - name: 验证不能把测试通过冒充完整复刻
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f edrawmind-replica/README.md
+          grep -q '尚未实现' edrawmind-replica/README.md
+          echo "Status: core tests only; full EdrawMind V14 parity NOT VERIFIED"
