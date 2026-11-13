@@ -1,0 +1,81 @@
+name: 龙虾工作 Agent · 免费云端安装与复刻验收
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/openclaw-cloud-worker.yml'
+permissions:
+  contents: read
+concurrency:
+  group: openclaw-cloud-free
+  cancel-in-progress: true
+jobs:
+  install-and-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      OPENCLAW_NO_UPDATE_CHECK: '1'
+    steps:
+      - name: 检出已有复刻工程（保留生产网站）
+        uses: actions/checkout@v4
+        with:
+          ref: feature/edrawmind-replica-core
+          submodules: recursive
+          persist-credentials: false
+      - name: 安装 Node.js 受支持版本
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.1'
+      - name: 安装固定官方 OpenClaw
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Node $(node --version), npm $(npm --version)"
+          npm install -g openclaw@2026.11.3
+          openclaw --version
+      - name: 安装现有复刻 Skill 与官方核心工具
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.openclaw/workspace/skills/software-replica"
+          cp cloud-agent/skills/software-replica/SKILL.md "$HOME/.openclaw/workspace/skills/software-replica/SKILL.md"
+          test -s "$HOME/.openclaw/workspace/skills/software-replica/SKILL.md"
+          test -s tools/复刻工具/replica-skill/replica-recon/SKILL.md
+          test -s tools/复刻工具/replica-skill/replica-test/SKILL.md
+          test -s tools/复刻工具/remaster/skills/clone/scripts/remaster.mjs
+          node tools/复刻工具/remaster/skills/clone/scripts/remaster.mjs --help | grep -q parity
+          openclaw agent --help | grep -q -- '--message'
+      - name: 配置严格零费用免费模型路由
+        shell: bash
+        run: |
+          set -euo pipefail
+          openclaw models set openrouter/openrouter/free
+          openclaw models status --json > /tmp/openclaw-model-status.json
+          node -e "const x=require('/tmp/openclaw-model-status.json');const t=JSON.stringify(x); if(!t.includes('openrouter/openrouter/free'))process.exit(1);console.log('FREE_ONLY_MODEL_CONFIGURED')"
+      - name: 真正运行复刻项目核心行为测试
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test edrawmind-replica/tests/mindmap.test.mjs
+      - name: 免费模型真实推理（没有密钥则明确阻塞，不伪造结果）
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p cloud-agent/evidence
+          if [[ -z "${OPENROUTER_API_KEY:-}" ]]; then
+            printf 'MODEL_INFERENCE=BLOCKED_MISSING_GITHUB_SECRET\n' | tee cloud-agent/evidence/inference.txt
+            exit 0
+          fi
+          openclaw agent exec "Reply with the word OK only." --model openrouter/openrouter/free --json > cloud-agent/evidence/agent-test.json
+          node -e "const x=require('./cloud-agent/evidence/agent-test.json');const s=JSON.stringify(x);if(!s.includes('OK'))process.exit(1); console.log('OPENCLAW_FREE_AGENT_INFERENCE_VERIFIED')"
+          printf 'MODEL_INFERENCE=VERIFIED_OPENROUTER_FREE\n' | tee cloud-agent/evidence/inference.txt
+      - name: 上传真实证据（不上传凭据）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: 龙虾免费复刻能力验收证据
+          path: cloud-agent/evidence/inference.txt
+          if-no-files-found: warn
+          retention-days: 7
