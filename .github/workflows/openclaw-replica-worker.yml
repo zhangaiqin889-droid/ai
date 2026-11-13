@@ -1,0 +1,59 @@
+name: OpenClaw 云端工作 Agent · 安装与复刻能力自检
+on:
+  push:
+    branches: [feature/edrawmind-replica-core]
+    paths:
+      - '.github/workflows/openclaw-replica-worker.yml'
+      - 'cloud-agent/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cloud-openclaw-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  openclaw-install-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: 只读检出仓库和固定提交复刻工具
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: 安装官方要求的 Node LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.1'
+      - name: 安装固定版本 OpenClaw（仅当前任务的隔离容器）
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install -g openclaw@2026.11.1 --allow-scripts=openclaw
+          openclaw --version
+      - name: 安装与功能入口校验
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p cloud-agent/evidence
+          node --version | tee cloud-agent/evidence/node-version.txt
+          openclaw --version | tee cloud-agent/evidence/openclaw-version.txt
+          openclaw agent --help > cloud-agent/evidence/agent-help.txt
+          openclaw skills --help > cloud-agent/evidence/skills-help.txt
+          grep -q -E -- '--(local|message)' cloud-agent/evidence/agent-help.txt
+          test -f tools/复刻工具/replica-skill/replica-recon/SKILL.md
+          test -f tools/复刻工具/replica-skill/replica-test/SKILL.md
+          test -f tools/复刻工具/remaster/skills/clone/scripts/remaster.mjs
+          node tools/复刻工具/remaster/skills/clone/scripts/remaster.mjs --help > cloud-agent/evidence/remaster-help.txt
+          printf 'INSTALL_SMOKE=PASS\nMODEL_EXECUTION=NOT_CONFIGURED\nFULL_REPLICA=NOT_VERIFIED\n' > cloud-agent/evidence/status.txt
+      - name: 真正运行既有脑图核心测试（不冒充全功能）
+        shell: bash
+        run: node --test edrawmind-replica/tests/mindmap.test.mjs
+      - name: 保留安装验收证据
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: openclaw-replica-install-evidence
+          path: cloud-agent/evidence/
+          if-no-files-found: warn
+          retention-days: 7
