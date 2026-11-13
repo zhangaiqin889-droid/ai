@@ -71,11 +71,44 @@ jobs:
           openclaw agent exec "Reply with the word OK only." --model openrouter/free --thinking minimal --json > cloud-agent/evidence/agent-test.json
           node -e "const x=require('./cloud-agent/evidence/agent-test.json');const s=JSON.stringify(x);const errors=['isError\\\":true','status\\\":400','Reasoning is required','Model request failed'];if(errors.some(e=>s.includes(e))||!s.includes('OK')){console.error('INFERENCE_FAILED');process.exit(1)} console.log('OPENCLAW_FREE_AGENT_INFERENCE_VERIFIED')"
           printf 'MODEL_INFERENCE=VERIFIED_OPENROUTER_FREE\n' | tee cloud-agent/evidence/inference.txt
+      - name: 启动独立云端 n8n 2.35.7（仅本次 Runner）
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --rm --name n8n-cloud-check \
+            -e N8N_HOST=127.0.0.1 \
+            -e N8N_PORT=5678 \
+            -e N8N_SECURE_COOKIE=false \
+            -e N8N_DIAGNOSTICS_ENABLED=false \
+            -e N8N_TEMPLATES_ENABLED=false \
+            -e N8N_PERSONALIZATION_ENABLED=false \
+            -p 127.0.0.1:5678:5678 \
+            docker.n8n.io/n8nio/n8n:2.35.7
+      - name: 云端 n8n 实例健康检查
+        shell: bash
+        run: |
+          set -euo pipefail
+          success=0
+          for i in $(seq 1 60); do
+            if curl --silent --fail http://127.0.0.1:5678/healthz | grep -q '"status":"ok"'; then
+              success=1
+              break
+            fi
+            sleep 3
+          done
+          if [ "$success" -ne 1 ]; then
+            docker logs --tail=80 n8n-cloud-check
+            exit 1
+          fi
+          echo 'n8n v2.35.7: cloud ephemeral health verified'
+          echo 'n8n runtime is ephemeral; user workflows and credentials are not migrated' > cloud-agent/evidence/n8n-status.txt
       - name: 上传真实证据（不上传凭据）
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: 龙虾免费复刻能力验收证据
-          path: cloud-agent/evidence/inference.txt
+          path: |
+            cloud-agent/evidence/inference.txt
+            cloud-agent/evidence/n8n-status.txt
           if-no-files-found: warn
           retention-days: 7
