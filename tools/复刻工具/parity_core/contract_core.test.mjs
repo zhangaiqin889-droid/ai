@@ -1,0 +1,14 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { normalizeJson, compareJson, assertMatrix, compileContracts, evaluateResults } from './contract_core.mjs';
+const matrix={features:[{id:'a',name:'Alpha'},{id:'b',name:'Beta'}]};
+test('stable JSON comparison',()=>assert.equal(compareJson({a:1,b:2},{b:2,a:1}),true));
+test('different JSON rejected',()=>assert.equal(compareJson({a:1},{a:2}),false));
+test('prototype pollution key blocked',()=>assert.throws(()=>normalizeJson(JSON.parse('{"__proto__":5}'))));
+test('duplicate feature blocked',()=>assert.throws(()=>assertMatrix({features:[{id:'x'},{id:'x'}]})));
+test('contracts start unverified',()=>assert.equal(compileContracts(matrix).cases[0].test_status,'NOT_VERIFIED'));
+test('unverified remain unverified',()=>assert.equal(evaluateResults(matrix,[{feature_id:'a',outcome:'PASS'}]).not_verified,1));
+test('unknown features rejected',()=>assert.throws(()=>evaluateResults(matrix,[{feature_id:'c',outcome:'PASS'}])));
+test('duplicate observations rejected',()=>assert.throws(()=>evaluateResults(matrix,[{feature_id:'a',outcome:'PASS'},{feature_id:'a',outcome:'FAIL'}])));
+test('unsupported outcome rejected',()=>assert.throws(()=>evaluateResults(matrix,[{feature_id:'a',outcome:'DONE'}])));
+test('no false 99 percent claim',()=>assert.equal(evaluateResults(matrix,[{feature_id:'a',outcome:'PASS'},{feature_id:'b',outcome:'PASS'}]).whole_software_parity,'UNKNOWN'));
