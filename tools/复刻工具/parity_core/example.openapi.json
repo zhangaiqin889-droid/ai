@@ -1,0 +1,36 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Example CRUD",
+    "version": "1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "checkHealth",
+        "summary": "Check service status",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/items": {
+      "get": {
+        "operationId": "listItems",
+        "summary": "List items"
+      },
+      "post": {
+        "operationId": "createItem",
+        "summary": "Create item"
+      }
+    },
+    "/items/{id}": {
+      "get": {
+        "operationId": "getItem",
+        "summary": "Get item"
+      }
+    }
+  }
+}
