@@ -1,0 +1,29 @@
+name: Replica parity core tests
+on:
+  push:
+    branches:
+      - feature/replica-parity-core-20261114
+    paths:
+      - 'tools/复刻工具/parity_core/**'
+      - '.github/workflows/replica-parity-ci.yml'
+  workflow_dispatch:
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run offline unit and contract tests
+        working-directory: tools/复刻工具/parity_core
+        run: |
+          python -m unittest discover -s . -p "test_*.py" -v
+          python discover.py example.openapi.json --output /tmp/replica-features.json
+          python discover.py example.openapi.json --plan --output /tmp/replica-plan.json
+          python -c 'import json; f=json.load(open("/tmp/replica-features.json")); p=json.load(open("/tmp/replica-plan.json")); assert f["feature_count"] == 4; assert len(p["cases"]) == 2; print("Discovery smoke test PASS")'
