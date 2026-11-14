@@ -24,6 +24,7 @@ jobs:
         working-directory: tools/复刻工具/parity_core
         run: |
           python -m unittest discover -s . -p "test_*.py" -v
+          node --test contract_core.test.mjs
           python discover.py example.openapi.json --output /tmp/replica-features.json
           python discover.py example.openapi.json --plan --output /tmp/replica-plan.json
           python -c 'import json; f=json.load(open("/tmp/replica-features.json")); p=json.load(open("/tmp/replica-plan.json")); assert f["feature_count"] == 4; assert len(p["cases"]) == 2; print("Discovery smoke test PASS")'
